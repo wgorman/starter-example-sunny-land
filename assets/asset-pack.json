@@ -79,7 +79,7 @@
                 "key": "tileset"
             },
             {
-                "url": "assets/sprites/title-screen.png",
+                "url": "assets/sprites/title-screen-new.png",
                 "type": "image",
                 "key": "title-screen"
             }
