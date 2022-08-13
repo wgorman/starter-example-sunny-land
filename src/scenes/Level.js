@@ -163,6 +163,7 @@ class Level extends Phaser.Scene {
 		const player = new Player(this, 738, 121);
 		this.add.existing(player);
 		player.flipX = true;
+		player.flipY = false;
 
 		// left_button
 		const left_button = this.add.image(26, 170, "left-button");
@@ -183,8 +184,8 @@ class Level extends Phaser.Scene {
 		jump_button.tintTopLeft = 16627125;
 
 		// lists
-		const items = [cherry, cherry_1, cherry_2, cherry_3, cherry_4, cherry_5, gem, gem_1, gem_2, gem_3, gem_1_1, gem_2_1]
-		const enemies = [frog_1, frog, opossum_1, opossum, eagle, eagle_2]
+		const items = [cherry, cherry_1, cherry_2, cherry_3, cherry_4, cherry_5, gem, gem_1, gem_2, gem_3, gem_1_1, gem_2_1];
+		const enemies = [frog_1, frog, opossum_1, opossum, eagle, eagle_2];
 
 		// eagle (components)
 		const eagleCharacterMove = new CharacterMove(eagle);

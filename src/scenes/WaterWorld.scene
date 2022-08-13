@@ -1,0 +1,19 @@
+{
+    "id": "b4dd5cb6-7174-4607-af7d-39751a092112",
+    "sceneType": "SCENE",
+    "settings": {
+        "preloadPackFiles": [],
+        "createMethodName": "editorCreate",
+        "sceneKey": "WaterWorld",
+        "borderWidth": 1000,
+        "borderHeight": 1000
+    },
+    "displayList": [],
+    "plainObjects": [],
+    "meta": {
+        "app": "Phaser Editor 2D - Scene Editor",
+        "url": "https://phasereditor2d.com",
+        "contentType": "phasereditor2d.core.scene.SceneContentType",
+        "version": 3
+    }
+}

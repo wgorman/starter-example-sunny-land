@@ -65,6 +65,8 @@ class TitleScreen extends Phaser.Scene {
 		this.editorCreate();
 
 		this.input.keyboard.on("keydown-ENTER", this.enterPressed, this);
+		this.input.keyboard.on("keydown-SHIFT", this.enterPressed2, this);
+
 		this.input.on("pointerdown", this.enterPressed, this);
 
 		this.blinkText();
@@ -83,8 +85,11 @@ class TitleScreen extends Phaser.Scene {
 		}
 	}
 
+	enterPressed2() {
+		this.scene.start("WaterWorld");
+	}
+	
 	blinkText() {
-
 		this.time.addEvent({
 			repeat: -1,
 			delay: 1000,
@@ -95,7 +100,6 @@ class TitleScreen extends Phaser.Scene {
 	}
 
 	update() {
-
 		this.background.tilePositionX += 0.3;
 		this.middle.tilePositionX += 0.6;
 	}

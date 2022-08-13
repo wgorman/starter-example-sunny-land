@@ -2,8 +2,8 @@
 window.addEventListener("load", function () {
 
 	var game = new Phaser.Game({
-		width: 288,
-		height: 192,
+		width: 2048,
+		height: 1540,
 		type: Phaser.AUTO,
 		backgroundColor: "#242424",
 		scale: {
@@ -28,6 +28,7 @@ window.addEventListener("load", function () {
 	game.scene.add("Preloader", Preloader);
 	game.scene.add("TitleScreen", TitleScreen);
 	game.scene.add("Level", Level);
+	game.scene.add("WaterWorld", WaterWorld);
 });
 
 class Boot extends Phaser.Scene {
