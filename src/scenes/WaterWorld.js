@@ -22,10 +22,7 @@ class WaterWorld extends Phaser.Scene {
 	/* START-USER-CODE */
 
 	// Write your code here
-	drawHexagon(x1, y1, color){
-		return this.add.polygon(x1, y1, [25, 0, 75, 0, 100, 43, 75, 86, 25, 86, 0, 43], color);
-	
-	}
+
 	
 	drawBase(){
 		var crds = this.getHexCoords(25, 25);
@@ -54,10 +51,21 @@ class WaterWorld extends Phaser.Scene {
 		poly.setStrokeStyle( 4, 0x00ff00);
 		return poly;
 	}
+	drawEnemies(){
+		for(var i = 0; i < this.enemies.length; i++) {
+			this.drawEnemy(this.enemies[i]);
+		}
+	}
+	drawEnemy(enemy){
+		var circle = this.add.circle(enemy.x, enemy.y, 40, 0xff00ff);
+		enemy.circle = circle;
+		return circle;
+	}
 	
 	hexWidth = 75;
 	hexHeight = 86;
 	gameGrid = [];
+	enemies = [];
 	selection = null;
 	
 	getHexCoords(x, y){
@@ -73,27 +81,49 @@ class WaterWorld extends Phaser.Scene {
 		this.gameGrid[x][y] = wall;
 		return wall;
 	}
-
+	createWater(x, y) {
+		var water = {type: 'water', x: x, y: y, color: Math.random() * 100 + 150};
+		this.gameGrid[x][y] = water;
+		return water;
+	}
+	drawWater(water) {
+		var crds = this.getHexCoords(water.x,water.y);
+		return this.add.polygon(crds.x, crds.y, [25, 0, 75, 0, 100, 43, 75, 86, 25, 86, 0, 43], water.color);
+	}
 	gameGridWidth = 51;
 	gameGridHeight = 51;
 	selCoords = {x: 20, y:20};
+	
+	linkGrid(){
+		for (var x = 0; x < this.gameGridWidth; x++) {
+			for (var y = 0; y < this.gameGridHeight; y++) {
+				// for each hex location, we want to link to the other hex locations
+				this.gameGrid[x][y].neighbors = [];
+				this.gameGrid[x][y].neighbors[0] = this.gameGrid[x + 0][y - 1];
+				this.gameGrid[x][y].neighbors[1] = this.gameGrid[x + 1][y - 1];
+				this.gameGrid[x][y].neighbors[2] = this.gameGrid[x + 1][y + 0];
+				this.gameGrid[x][y].neighbors[3] = this.gameGrid[x + 0][y + 1];
+				this.gameGrid[x][y].neighbors[4] = this.gameGrid[x - 1][y + 0];
+				this.gameGrid[x][y].neighbors[5] = this.gameGrid[x - 1][y - 1];
+				
+				// TODO: we need to take into account out of bounds
+				// TODO: Every other X is different
+			}
+		}
+	}
 
 	create() {
-		
-		
 		// grid - 100 x 100
 		var colors = [0xff0000, 0x00ff00, 0x00ff00, 0xffffff];
 		for (var x = 0; x < this.gameGridWidth; x++) {
 			this.gameGrid[x] = [];
 			for (var y = 0; y < this.gameGridHeight; y++) {
-				this.gameGrid[x][y] = null;
-				var crds = this.getHexCoords(x,y);
-				var hex = this.drawHexagon(crds.x, crds.y, Math.random() * 100 + 150);
-
+				var water = this.createWater(x, y);
+				this.drawWater(water);
 			}
 		}
 		this.walls = [this.createWall(25,26), this.createWall(26,26), this.createWall(27,26)];
-
+		this.enemies = [{type: 'basic', x: 100, y: 100, health: 100}];
 		var hexPos = {
 			x: 500,
 			y: 500
@@ -104,6 +134,7 @@ class WaterWorld extends Phaser.Scene {
 		// var hex = this.drawHexagon(hexPos.x, hexPos.y, 0xff0000);
 		this.drawBase();
 		this.drawWalls();
+		this.drawEnemies();
 		var sel = this.drawSelect(this.selCoords);
 		this.camSize = {
 			x: 400,
@@ -151,6 +182,7 @@ class WaterWorld extends Phaser.Scene {
 				// move wall!
 				if (this.selection.type == 'wall') {
 					var wp = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
+					// NOTE: This isn't perfect for selecting hexagons
 					this.selCoords.x = Math.round(wp.x / this.hexWidth);
 					this.selCoords.y = Math.round(wp.y / this.hexHeight);
 					var crds = this.getHexCoords(this.selCoords.x, this.selCoords.y);
@@ -159,13 +191,17 @@ class WaterWorld extends Phaser.Scene {
 					
 					// this will adjust the coords
 					// clear out where it used to be
-					if (this.gameGrid[this.selCoords.x][this.selCoords.y] == null) {
+					if (this.gameGrid[this.selCoords.x][this.selCoords.y].type == 'water') {
+						// draw the selection in the new location
 						this.selection.poly.setX(crds.x);
 						this.selection.poly.setY(crds.y);
 						
-						this.gameGrid[this.selection.x][this.selection.y] = null;
-					
-						// update it's location
+						// replace the old location with water
+						this.gameGrid[this.selection.x][this.selection.y] = this.gameGrid[this.selCoords.x][this.selCoords.y];
+						this.gameGrid[this.selection.x][this.selection.y].x = this.selection.x;
+						this.gameGrid[this.selection.x][this.selection.y].y = this.selection.y;
+						
+						// update the new location
 						this.selection.x = this.selCoords.x;
 						this.selection.y = this.selCoords.y;
 						this.gameGrid[this.selection.x][this.selection.y] = this.selection;
@@ -196,7 +232,7 @@ class WaterWorld extends Phaser.Scene {
 			if (this.selCoords.x > 0 && this.selCoords.x < this.gameGridWidth){
 				if (this.selCoords.y > 0 && this.selCoords.y < this.gameGridHeight){
 					if (this.gameGrid[this.selCoords.x][this.selCoords.y] != null) {
-						console.log('type = ' + this.gameGrid[this.selCoords.x][this.selCoords.y].type);
+						console.log('type = ' + this.gameGrid[this.selCoords.x][this.selCoords.y].type + ' at location ' + this.selCoords.x + ',' + this.selCoords.y);
 						this.selection = this.gameGrid[this.selCoords.x][this.selCoords.y];
 					}
 				}
@@ -228,7 +264,6 @@ class WaterWorld extends Phaser.Scene {
 	}
 
 	update() {
-		
 		if (this.wasd.zoomOut.isDown) {
 			this.camSize.x = this.camSize.x * 1.1;
 			this.camSize.y = this.camSize.y * 1.1;
@@ -244,7 +279,7 @@ class WaterWorld extends Phaser.Scene {
 		if (this.wasd.addWall.isDown) {
 			if (this.selCoords.x > 0 && this.selCoords.x < this.gameGridWidth){
 				if (this.selCoords.y > 0 && this.selCoords.y < this.gameGridHeight){
-					if (this.gameGrid[this.selCoords.x][this.selCoords.y] == null) {
+					if (this.gameGrid[this.selCoords.x][this.selCoords.y].type == 'water') {
 						// ADD WALL HERE
 						var wall = this.createWall(this.selCoords.x, this.selCoords.y);
 						// DRAW WALL HERE
@@ -252,10 +287,7 @@ class WaterWorld extends Phaser.Scene {
 					}
 				}
 			}
-
-		
 		}
-
 	}
 	
 	getCanvasPoint(camera, x, y, output) {
