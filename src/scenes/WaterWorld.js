@@ -24,10 +24,10 @@ class WaterWorld extends Phaser.Scene {
 	// Write your code here
 
 	
-	drawBase(){
+	createBase(){
 		var crds = this.getHexCoords(25, 25);
-		this.gameGrid[25][25] = {type: 'base', x: 25, y: 25};
-
+		this.base = {type: 'base', x: 25, y: 25};
+		this.gameGrid[25][25] = this.base;
 		return this.add.polygon(crds.x, crds.y, [25, 0, 75, 0, 100, 43, 75, 86, 25, 86, 0, 43], 0xff0000);
 	}
 		
@@ -48,7 +48,7 @@ class WaterWorld extends Phaser.Scene {
 	drawSelect(xy){
 		var crds = this.getHexCoords(xy.x, xy.y);
 		var poly = this.add.polygon(crds.x, crds.y, [25, 0, 75, 0, 100, 43, 75, 86, 25, 86, 0, 43], 0, 0);
-		poly.setStrokeStyle( 4, 0x00ff00);
+		poly.setStrokeStyle(4, 0x00ff00);
 		return poly;
 	}
 	drawEnemies(){
@@ -67,6 +67,7 @@ class WaterWorld extends Phaser.Scene {
 	gameGrid = [];
 	enemies = [];
 	selection = null;
+	base = null;
 	
 	getHexCoords(x, y){
 		var xcoord = x * this.hexWidth;
@@ -94,35 +95,153 @@ class WaterWorld extends Phaser.Scene {
 	gameGridHeight = 51;
 	selCoords = {x: 20, y:20};
 	
+	getGridItem(x, y) {
+		if (x >= 0 && x < this.gameGridWidth && y >= 0 && y < this.gameGridHeight) {
+			return this.gameGrid[x][y];
+		}
+		return null;
+	}
+	
 	linkGrid(){
+		// TODO: We think there is a problem with linking the grid!
 		for (var x = 0; x < this.gameGridWidth; x++) {
 			for (var y = 0; y < this.gameGridHeight; y++) {
 				// for each hex location, we want to link to the other hex locations
 				this.gameGrid[x][y].neighbors = [];
-				this.gameGrid[x][y].neighbors[0] = this.gameGrid[x + 0][y - 1];
-				this.gameGrid[x][y].neighbors[1] = this.gameGrid[x + 1][y - 1];
-				this.gameGrid[x][y].neighbors[2] = this.gameGrid[x + 1][y + 0];
-				this.gameGrid[x][y].neighbors[3] = this.gameGrid[x + 0][y + 1];
-				this.gameGrid[x][y].neighbors[4] = this.gameGrid[x - 1][y + 0];
-				this.gameGrid[x][y].neighbors[5] = this.gameGrid[x - 1][y - 1];
-				
-				// TODO: we need to take into account out of bounds
-				// TODO: Every other X is different
+				this.gameGrid[x][y].neighbors[0] = this.getGridItem(x + 0, y - 1);
+				this.gameGrid[x][y].neighbors[1] = this.getGridItem(x + 0, y + 1);
+				this.gameGrid[x][y].neighbors[2] = this.getGridItem(x + 1, y + 0);
+				this.gameGrid[x][y].neighbors[3] = this.getGridItem(x - 1, y + 0);
+				var diff = (x % 2 == 1) ? 1 : -1;
+				this.gameGrid[x][y].neighbors[4] = this.getGridItem(x + 1, y + diff);
+				this.gameGrid[x][y].neighbors[5] = this.getGridItem(x - 1, y + diff);
 			}
 		}
 	}
+	
+	updateNode(node) {
+		if (node.distance != -1) return;
+		var minDist = -1;
+		var toUpdateNodes = [];
+		for(var i = 0; i < node.neighbors.length; i++) {
+			if (node.neighbors[i] != null && node.neighbors[i].type != 'wall' && node.neighbors[i].distance != -1) {
+				if (node.neighbors[i].distance < minDist || minDist == -1) {
+					minDist = node.neighbors[i].distance;
+				}
+			} else if (node.neighbors[i] != null && node.neighbors[i].type != 'wall') {
+				toUpdateNodes.push(node.neighbors[i]);
+			}
+		}
+		node.distance = minDist + 1;
+		for(var i = 0; i < toUpdateNodes.length; i++) {
+			this.updateNode(toUpdateNodes[i]);
+		}
+	}
+	
+	updateHeatMap(){
+		// reseting grid
+		for (var x = 0; x < this.gameGridWidth; x++) {
+			for (var y = 0; y < this.gameGridHeight; y++) {
+				this.gameGrid[x][y].distance = -1;
+			}
+		}
+		this.updateNode(this.base);	
+	}
+    hlt = 0;
+	prev = {x: 0, y: 0};
+	getHexLoc(x, y) {
+		// rectangles if x is in the middle of the hexagon
+		// triangles if x is on the sides of the hexagon
+		var	r = {x: Math.round(x / this.hexWidth), y: Math.round(y / this.hexHeight)};
+		if (r.x % 2 == 1) {
+		  r.y = Math.round((y - this.hexHeight / 2) / this.hexHeight);
+		}
+		
+		var xRect = r.x * this.hexWidth;
+		var yRect = r.y * this.hexHeight;
+		if (xRect > x && yRect < y) {
+			if (
+					((xRect - x) > 30) 
+					&& ((xRect - x) < 48) 
+					&& ((y - yRect) > 28)
+				) {
+		  		r.y = 50;
+		  		r.x = 50;
+			}
+		}
+		return r;
+		/* else {
+			if ((x - xRect) > 30 && (x - xRect)  < 48) {
+		  		r.y = -10;
+		  		r.x = -10;
+			}		
+		}*
+		
+		
+		// if x is 7 pixels from the left
+		
+		
+		// if x 7 pixels or less from the right or left
+		// if y is first half, A = Subtract one from X
+		// if y is second half, B
+		
+		if (this.hlt % 100 == 0 && (this.prev.x != r.x || this.prev.y != r.y)) {
+			console.log('r: ' + r.x +', ' + r.y);
+			this.prev.x = r.x;
+			this.prev.y = r.y;
+		}
+		return r;
+		
+		/*
+		var color = this.textures.getPixel(x, y, 'lookupGrid');
+		if (color == null) {
+			return {x: -1, y: -1};
+		}
+		this.hlt++;
+		if (this.hlt % 100 == 0) {
+			console.log('color: ' + color.red +', ' + color.green + ', ' + color.blue + ', ' + color.alpha);
+		}
+		return {x: Math.ceil(color.green / 5), y: Math.ceil(color.blue / 5)};
+		*/
+	}
 
+	createLookupGrid(){
+		var graphics = this.add.graphics();
+		for (var x = 0; x < this.gameGridWidth; x++) {
+			for (var y = 0; y < this.gameGridHeight; y++) {
+				var crds = this.getHexCoords(x, y);
+				var polygon = new Phaser.Geom.Polygon([25, 0, 75, 0, 100, 43, 75, 86, 25, 86, 0, 43]);
+				Phaser.Geom.Polygon.Translate(polygon, crds.x - 50, crds.y - 43);
+				var color = Phaser.Display.Color.GetColor(0, x * 5, y * 5);
+
+				graphics.fillStyle(color);
+				graphics.lineStyle(1, color);
+				if (x % 2 == 0 && y % 2 == 0) {
+					graphics.fillPoints(polygon.points);
+					graphics.strokePoints(polygon.points);
+
+				}
+			}
+		}
+		graphics.generateTexture('lookupGrid', 100 * this.gameGridWidth, 86 * this.gameGridHeight);
+	}
+	
 	create() {
+		this.createLookupGrid();
+		
 		// grid - 100 x 100
 		var colors = [0xff0000, 0x00ff00, 0x00ff00, 0xffffff];
 		for (var x = 0; x < this.gameGridWidth; x++) {
 			this.gameGrid[x] = [];
 			for (var y = 0; y < this.gameGridHeight; y++) {
 				var water = this.createWater(x, y);
-				this.drawWater(water);
+				// this.drawWater(water);
 			}
 		}
-		this.walls = [this.createWall(25,26), this.createWall(26,26), this.createWall(27,26)];
+		this.walls = [this.createWall(25,23), 
+					  this.createWall(24,24), 
+					  this.createWall(23,24),
+					  this.createWall(22,25)];
 		this.enemies = [{type: 'basic', x: 100, y: 100, health: 100}];
 		var hexPos = {
 			x: 500,
@@ -130,9 +249,13 @@ class WaterWorld extends Phaser.Scene {
 		};
 		this.pointerState = 0; // 0 - UP, 1 - DOWN
 		this.pointerStart = {x: 0, y: 0, scrollX: 0, scrollY: 0};
+		this.createBase();
 		
-		// var hex = this.drawHexagon(hexPos.x, hexPos.y, 0xff0000);
-		this.drawBase();
+		// run this after creating all entities
+		this.linkGrid();
+		
+		this.updateHeatMap();
+		
 		this.drawWalls();
 		this.drawEnemies();
 		var sel = this.drawSelect(this.selCoords);
@@ -151,7 +274,7 @@ class WaterWorld extends Phaser.Scene {
 
 			if (deltaY < 0) {
 				var newZoom = this.cameras.main.zoom + 0.1;
-				if (newZoom < 5.0) {
+				if (newZoom < 50.0) {
 					this.cameras.main.zoom = newZoom;     
 				}
 			}
@@ -164,8 +287,12 @@ class WaterWorld extends Phaser.Scene {
 			// if zoom is 0.5, then offset is going to be 100 ~viewport width / 4
 			// if zoom is 2, the offset is probably going to be -100
 			var wp = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
-			this.selCoords.x = Math.round(wp.x / this.hexWidth);
-			this.selCoords.y = Math.round(wp.y / this.hexHeight);
+			var coords = this.getHexLoc(wp.x, wp.y);
+			this.selCoords.x = coords.x;
+			this.selCoords.y = coords.y;
+			
+			// this.selCoords.x = Math.round(wp.x / this.hexWidth);
+			// this.selCoords.y = Math.round(wp.y / this.hexHeight);
 			
 			
 			// selCoords.x = Math.round((pointer.x / this.cameras.main.zoom) / this.hexWidth - xoffset);
@@ -183,8 +310,8 @@ class WaterWorld extends Phaser.Scene {
 				if (this.selection.type == 'wall') {
 					var wp = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
 					// NOTE: This isn't perfect for selecting hexagons
-					this.selCoords.x = Math.round(wp.x / this.hexWidth);
-					this.selCoords.y = Math.round(wp.y / this.hexHeight);
+					// this.selCoords.x = Math.round(wp.x / this.hexWidth);
+					// this.selCoords.y = Math.round(wp.y / this.hexHeight);
 					var crds = this.getHexCoords(this.selCoords.x, this.selCoords.y);
 	
 					// this will move the graphic
@@ -208,7 +335,7 @@ class WaterWorld extends Phaser.Scene {
 					}
 				}
 			}
-			if (this.selection == null && this.pointerState == 1) {
+			if ((this.selection == null || this.selection.type == 'water') && this.pointerState == 1) {
 				this.cameras.main.scrollX = this.pointerStart.scrollX - (pointer.x - this.pointerStart.x) * (1.0 / this.cameras.main.zoom);
 				this.cameras.main.scrollY = this.pointerStart.scrollY - (pointer.y - this.pointerStart.y) * (1.0 / this.cameras.main.zoom);
 			}
@@ -226,13 +353,20 @@ class WaterWorld extends Phaser.Scene {
 			});
         this.input.on('pointerdown', (pointer) => {
 			var wp = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
-			this.selCoords.x = Math.round(wp.x / this.hexWidth);
-			this.selCoords.y = Math.round(wp.y / this.hexHeight);
+			var coords = this.getHexLoc(wp.x, wp.y);
+			this.selCoords.x = coords.x;
+			this.selCoords.y = coords.y;	
 			
-			if (this.selCoords.x > 0 && this.selCoords.x < this.gameGridWidth){
-				if (this.selCoords.y > 0 && this.selCoords.y < this.gameGridHeight){
+			// this.selCoords.x = Math.round(wp.x / this.hexWidth);
+			// this.selCoords.y = Math.round(wp.y / this.hexHeight);
+
+			
+			// console.log('before: ' + this.selCoords.x + ', ' + this.selCoords.y + ', after: ' + coords.x + ', ' + coords.y);
+			
+			if (this.selCoords.x >= 0 && this.selCoords.x < this.gameGridWidth){
+				if (this.selCoords.y >= 0 && this.selCoords.y < this.gameGridHeight){
 					if (this.gameGrid[this.selCoords.x][this.selCoords.y] != null) {
-						console.log('type = ' + this.gameGrid[this.selCoords.x][this.selCoords.y].type + ' at location ' + this.selCoords.x + ',' + this.selCoords.y);
+						console.log('type = ' + this.gameGrid[this.selCoords.x][this.selCoords.y].type + ' at location ' + this.selCoords.x + ',' + this.selCoords.y + ', wp = ' + wp.x + ', ' + wp.y + ' distance = ' + this.gameGrid[this.selCoords.x][this.selCoords.y].distance);
 						this.selection = this.gameGrid[this.selCoords.x][this.selCoords.y];
 					}
 				}
@@ -262,8 +396,62 @@ class WaterWorld extends Phaser.Scene {
 			addWall: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.W, true)
 		};
 	}
-
+	
+	getGridXY(x, y){
+	 return {x: Math.round(x / this.hexWidth), y: Math.round(y / this.hexHeight)};	
+	}
+	
 	update() {
+		
+		// move the bad guys
+		for (var i = 0; i < this.enemies.length; i++) {
+			var enemy = this.enemies[i];
+			var gridLoc = this.getGridXY(enemy.x, enemy.y);
+			var minDist = 10000;
+			var minDistItem = null;
+			if (gridLoc.x >= 0 && gridLoc.y >= 0 && gridLoc.x < this.gameGridWidth && gridLoc.y < this.gameGridHeight) {
+				var gridItem = this.gameGrid[gridLoc.x][gridLoc.y];
+				for (var j = 0; j < gridItem.neighbors.length; j++) {
+					if (gridItem.neighbors[j] != null && gridItem.neighbors[j].type != 'wall' && gridItem.neighbors[j].distance < minDist) {
+						minDist = gridItem.neighbors[j].distance;
+						minDistItem = gridItem.neighbors[j];
+					}
+				}
+				// console.log('gl: ' + gridLoc.x + ', ' + gridLoc.y + ', ' + gridItem.distance + ', go to ' + minDistItem.x + ', ' + minDistItem.y + ', ' + minDistItem.distance);
+
+				var hexCoords = this.getHexCoords(minDistItem.x, minDistItem.y);
+				// move bad guy to hex coords
+
+				if (hexCoords.x > enemy.x) {
+					enemy.x += 1;
+					if (hexCoords.x < enemy.x) {
+						enemy.x = hexCoords.x;
+					}
+				} else if (hexCoords.x < enemy.x) {
+					enemy.x -= 1;
+					if (hexCoords.x > enemy.x) {
+						enemy.x = hexCoords.x;
+					}
+				}
+				if (hexCoords.y > enemy.y) {
+					enemy.y += 1;
+					if (hexCoords.y < enemy.y) {
+						enemy.y = hexCoords.y;
+					}
+				} else if (hexCoords.y < enemy.y) {
+					enemy.y -= 1;
+					if (hexCoords.y > enemy.y) {
+						enemy.y = hexCoords.y;
+					}
+				}
+				// rerender 
+				enemy.circle.setX(enemy.x);
+				enemy.circle.setY(enemy.y);
+				
+			}
+		}
+		
+		
 		if (this.wasd.zoomOut.isDown) {
 			this.camSize.x = this.camSize.x * 1.1;
 			this.camSize.y = this.camSize.y * 1.1;

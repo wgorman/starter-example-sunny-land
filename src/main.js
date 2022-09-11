@@ -16,6 +16,7 @@ window.addEventListener("load", function () {
 				debug: false
 			}
 		},
+		pixelArt: true,
 		render: {
 			pixelArt: true
 		},
